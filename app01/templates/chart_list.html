@@ -1,0 +1,60 @@
+{% extends 'layout.html' %}
+{% load static %}
+{% block content %}
+    <title>ECharts</title>
+    <div id="main" style="width: 600px;height:400px;">
+
+    </div>
+{% endblock %}
+{% block js %}
+    <script src="{% static 'js/echarts.js' %}"></script>
+    <script type="text/javascript">
+        $(function () {
+            initBar();
+        })
+
+        {#初始化柱状图#}
+
+        function initBar() {
+
+            // 基于准备好的dom，初始化echarts实例
+            var myChart = echarts.init(document.getElementById('main'));
+
+            // 指定图表的配置项和数据
+            var option = {
+                title: {
+                    text: 'ECharts 入门示例',
+                    subtext: '副标题',
+                    textAlign: "auto",
+                    left: "center",
+                },
+                tooltip: {},
+                legend: {
+                    data: [], // 接收后台传来的数据
+                    // 让标签显示在表格的底部（默认显示在表格的顶部）
+                    bottom: 0
+                },
+                xAxis: {
+                    data: [] // 接收后台传来的数据
+                },
+                yAxis: {},
+                series: [],// 接收后台传来的数据
+            };
+
+            $.ajax({
+                url: '/chart/bar/',
+                type: "GET",
+                dataType: "JSON",
+                success: function (res) {
+                    if (res.status) {
+                        option.legend.data = res.data.legend;
+                        option.xAxis.data = res.data.x_list;
+                        option.series = res.data.series;
+                        // 使用刚指定的配置项和数据显示图表。
+                        myChart.setOption(option);
+                    }
+                }
+            })
+        }
+    </script>
+{% endblock %}

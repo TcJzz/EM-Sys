@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div style="margin-bottom: 20px" class="clearfix">
+        <a href="/admin/add/" class="btn btn-primary">新建管理员</a>
+        <form method="get" style="width:300px;float: right">
+            <div class="input-group">
+                <input type="text" name="search" class="form-control" placeholder="Search for..." value="{{ search }}">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit">Go!</button>
+                </span>
+            </div><!-- /input-group -->
+        </form>
+    </div>
+    <div>
+        <div class="panel panel-default">
+
+            <div class="panel-heading">管理员列表</div>
+
+            <table class="table table-bordered" style="table-layout: fixed">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>姓名</th>
+                    <th>密码</th>
+                    <th>重置密码</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for obj in username %}
+                <tr>
+                        <th scope="row">{{ obj.id }}</th>
+                        <td>{{ obj.username }}</td>
+                        <td>*******</td>
+                        <td>
+                            <a href="/admin/{{ obj.id }}/reset/">重置密码</a>
+                        </td>
+                        <td>
+                            <a class="btn btn-success btn-sm" href="/admin/{{ obj.id }}/edit/">编辑</a>
+                            <a class="btn btn-danger btn-sm" href="/admin/{{ obj.id }}/delete/">删除</a>
+                        </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="clearfix">
+        <nav aria-label="Page navigation" class="clearfix">
+            <ul class="pagination">
+                {{ page_string }}
+            </ul>
+        </nav>
+    </div>
+{% endblock %}

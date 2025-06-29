@@ -1,0 +1,257 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+    {# 新建订单按钮/搜索框 #}
+    <div class="container clearfix">
+        <input type="button" placeholder="新建订单" class="btn btn-primary btnAdd" value="新建订单（js）">
+        <input type="button" placeholder="新建订单" class="btn btn-primary" value="新建订单" data-toggle="modal"
+               data-target="#myModal">
+        <form method="get" style="width:300px;float: right">
+            <div class="input-group">
+                <input type="text" name="title" class="form-control" placeholder="Search for..." value="{{ title }}">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="submit">Go!</button>
+                </span>
+            </div><!-- /input-group -->
+        </form>
+    </div>
+    {#  表格内容  #}
+    <div style="margin-top:20px">
+        <div class="panel panel-default">
+
+            <div class="panel-heading">订单列表</div>
+
+            <table class="table table-bordered" style="table-layout: fixed">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>订单号</th>
+                    <th>商品名称</th>
+                    <th>价格</th>
+                    <th>订单状态</th>
+                    <th>订单管理员</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for obj in order %}
+                    <tr>
+                        <th scope="row">{{ obj.id }}</th>
+                        <td>{{ obj.oid }}</td>
+                        <td>{{ obj.title }}</td>
+                        <td>{{ obj.price }}</td>
+                        <td>{{ obj.get_statu_display }}</td>
+                        <td>{{ obj.uid.username }}</td>
+                        <td>
+                            <input row_id="{{ obj.id }}" type="button" class="btn btn-success btnAdd" value="编 辑">
+                            {# 因为id属性只能有一个，如果用的是id="btnDelete"则只会有一个按钮生效，别的按钮都不能生效 #}
+                            {# 所以为了让所有的按钮都生效，只能使用class="btnDelete" #}
+                            <input row_id="{{ obj.id }}" type="button" class="btn btn-danger btnDelete" value="删 除">
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {#  分页栏  #}
+    <div class="clearfix">
+        <nav aria-label="Page navigation" class="clearfix">
+            <ul class="pagination">
+                {{ page_string }}
+            </ul>
+        </nav>
+    </div>
+    {#  添加订单/编辑订单 对话框  #}
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel"></h4>
+                </div>
+                <div class="modal-body">
+                    <form method="post" id="formAdd">
+                        {% csrf_token %}
+                        {% for obj in form %}
+                            <div style="margin-bottom:20px ">
+                                <label>{{ obj.label }}</label>
+                                {{ obj }}
+                                <span class="error_msg" style="color:red;position:absolute;"></span>
+                            </div>
+                        {% endfor %}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <button id='btnSave' type="button" class="btn btn-primary">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {#  删除警告框  #}
+    <div id="deleteModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="alert alert-danger alert-dismissible fade in clearfix" role="alert" style="margin:0">
+                    <h4>确认删除</h4>
+                    <p>是否确定删除所有相关数据？任何删除的数据都不可挽回！</p>
+                    <p style="float:right">
+                        <button id="btnDelete_confirm" type="button" class="btn btn-danger">确 认</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">取 消</button>
+                    </p>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+{% endblock %}
+{% block js %}
+    <script type="text/javascript">
+        var delete_id;
+        var edit_id = undefined;
+        // 当页面框架加载完之后自动执行这个代码
+        $(function () {
+            bindBtnAddOrderEvent();
+            bindBtnSaveOrderEvent();
+            bindBtnDeleteOrderEvent();
+            bindBtnDeleteOrderEvent_confirm();
+        })
+        {#在bootstrap文档中有提到，通过js的方式实现弹窗#}
+        // 弹出（新建/修改）弹窗
+        function bindBtnAddOrderEvent() {
+            $(".btnAdd").click(function () {
+                edit_id = $(this).attr("row_id");
+                console.log("edit_id:" + edit_id);
+                if (edit_id) {
+                    // 为了清空之前有编辑过某条数据之后edit_id被赋的值
+                    $('#formAdd')[0].reset();
+                    $("#myModalLabel").text('编辑订单');
+                    $('#myModal').modal('show');
+                    console.log("当前编辑的edit_id是：" + edit_id)
+                    doEdit();
+                } else {
+                    // 为了清空之前有编辑过某条数据之后edit_id被赋的值
+                    $('#formAdd')[0].reset();
+                    $('#myModal').modal('show');
+                    $("#myModalLabel").text('新建订单');
+                    console.log("新建的edit_id是：" + edit_id);
+                }
+            })
+        }
+
+        // 确认（新建/编辑）保存
+        function bindBtnSaveOrderEvent() {
+            $("#btnSave").click(function () {
+                {#如果上次有错误信息，在输入框正确填写之后，清空错误信息#}
+                $(".error_msg").empty();
+                if (edit_id) {
+                    $.ajax({
+                        url: '/order/edit/?edt_id=' + edit_id,
+                        type: 'POST',
+                        data: $('#formAdd').serialize(),
+                        dataType: "JSON",
+                        success: function (res) {
+                            if (res.status) {
+                                alert("修改成功")
+                                // 清空表单中的数据
+                                $('#formAdd')[0].reset();
+                                // 隐藏对话框
+                                $('#myModal').modal('hide');
+                                // 刷新当前页面
+                                location.reload();
+                            } else {
+                                $.each(res.errors, function (k, v) {
+                                    {# modelform生成标签的时候会自动生成一个id="id_字段名",这就可以进行一下的字符串拼接#}
+                                    $('#id_' + k).next().text(v[0]);
+                                })
+                            }
+                        }
+                    })
+                } else {
+                    // 新建订单的保存
+                    $.ajax({
+                        url: '/order/add/',
+                        type: 'POST',
+                        data: $('#formAdd').serialize(),
+                        dataType: "JSON",
+                        success: function (res) {
+                            if (res.status) {
+                                alert("添加成功")
+                                // 清空表单中的数据
+                                $('#formAdd')[0].reset();
+                                // 隐藏对话框
+                                $('#myModal').modal('hide');
+                                // 刷新当前页面
+                                location.reload();
+                            } else {
+                                $.each(res.errors, function (k, v) {
+                                    {# modelform生成标签的时候会自动生成一个id="id_字段名",这就可以进行一下的字符串拼接#}
+                                    $('#id_' + k).next().text(v[0]);
+                                })
+                            }
+                        }
+                    })
+                }
+            })
+        }
+
+        // 弹出删除弹窗
+        function bindBtnDeleteOrderEvent() {
+            $(".btnDelete").click(function () {
+                $("#deleteModal").modal('show');
+                delete_id = $(this).attr("row_id");
+                console.log('删除的id是：' + delete_id);
+            })
+        }
+
+        // 确认删除
+        function bindBtnDeleteOrderEvent_confirm() {
+            $("#btnDelete_confirm").click(function () {
+                $.ajax({
+                    url: '/order/delete/',
+                    type: 'GET',
+                    data: {
+                        dlt_id: delete_id,// 传回的url：order/delete/?dlt_id=delete_id
+                    },
+                    dataType: "JSON",
+                    success: function (res) {
+                        if (res.status) {
+                            alert("删除成功");
+                            $("#deleteModal").modal("hide");
+                            location.reload();
+                        } else {
+                            alert("删除失败，数据不存在。");
+                            $("#deleteModal").modal("hide");
+                            location.reload();
+                        }
+                    }
+                })
+            })
+        }
+
+        // 从数据库中获取当前edit_id对应的id，然后将所有数据展现在输入框中
+        // 因为这个函数没有绑定事件，而是通过bindBtnAddOrderEvent()调用函数，所以不添加到开头的function中，以免自动执行
+        function doEdit() {
+            $.ajax({
+                url: '/order/detail/',
+                type: "GET",
+                data: {
+                    edt_id: edit_id,
+                },
+                dataType: 'JSON',
+                success: function (res) {
+                    if (res.status) {
+                        $.each(res.data, function (name, value) {
+                            $("#id_" + name).val(value);
+                        })
+                        $('#myModal').modal("show");
+                        console.log(res)
+                    } else {
+                        alert(res.errors);
+                    }
+                }
+            })
+        }
+    </script>
+{% endblock %}
